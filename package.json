@@ -1,0 +1,28 @@
+{
+  "name": "@squirrel-labs/peanut-sdk",
+  "version": "1.0.2",
+  "description": "NPM package for the Peanut Protocol SDK",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ProphetFund/peanut-sdk.git"
+  },
+  "keywords": [],
+  "author": "Hugo Montenegro, Konrad Urban",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ProphetFund/peanut-sdk/issues"
+  },
+  "homepage": "https://github.com/ProphetFund/peanut-sdk#readme",
+  "dependencies": {
+    "ethers": "^6.0.3",
+    "npm-packlist": "^7.0.4"
+  },
+  "devDependencies": {
+    "@squirrel-labs/peanut-sdk": "^1.0.2"
+  }
+}
