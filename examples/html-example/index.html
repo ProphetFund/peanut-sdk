@@ -1,0 +1,92 @@
+<!-- example page using the peanut-sdk -->
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>PEANUT SDK EXAMPLE</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@squirrel-labs/peanut-sdk@1.0.4/index.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+
+<body class="bg-yellow-100"  id="app">
+
+      <!-- connect button (top right) -->
+      <div class="absolute top-0 right-0 m-4">
+        <w3m-core-button></w3m-core-button>
+      </div>
+  <div class="container max-w-4xl mx-auto pt-4 ">
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+      <div class="px-6 py-4">
+        <div class="font-bold text-xl mb-2">PEANUT SDK EXAMPLE</div>
+        <p class="text-gray-700 text-base">
+          This is an example HTML page using the <a href="https://www.npmjs.com/package/@squirrel-labs/peanut-sdk" target="_blank" class="text-blue-500 underline hover:text-blue-800">peanut-sdk</a>.
+          <br>Git Repo <a href="https://github.com/ProphetFund/peanut-sdk" target="_blank" class="text-blue-500 underline hover:text-blue-800">here</a>.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Link Flow -->
+  <div class="container max-w-4xl mx-auto pt-4 ">
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+
+      <!-- Create new link: button and amount field -->
+      <form class="px-6 py-4" @submit.prevent="createLink">
+        <div class="font-bold text-xl mb-2">Create new link</div>
+        <p class="text-gray-700 text-base">
+          Create a new link to receive donations.
+        </p>
+        <div class="flex items-center mt-4">
+          <div class="w-full">
+            <label class="block text-gray-700 text-sm font-bold mb-2" for="amount">
+              Amount
+            </label>
+            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="amount" type="number" placeholder="Amount" v-model="amount">
+          </div>
+          <div class="ml-4">
+            <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="button">
+              Create link
+            </button>
+          </div>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+
+  <!-- Claim Link Flow -->
+  <div class="container max-w-4xl mx-auto pt-4 ">
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+
+      <!-- Create new link: button and amount field -->
+      <form class="px-6 py-4" @submit.prevent="claimLink">
+        <div class="font-bold text-xl mb-2">Claim link</div>
+        <p class="text-gray-700 text-base">
+          Claim a link to receive donations.
+        </p>
+        <div class="flex items-center mt-4">
+          <div class="w-full">
+            <label class="block text-gray-700 text-sm font-bold mb-2" for="link">
+              Link
+            </label>
+            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="link" type="text" placeholder="Link" v-model="link">
+          </div>
+          <div class="ml-4">
+            <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="button" x-on:click="PeanutProtocol.greeting()">
+              Claim link
+            </button>
+          </div>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+
+  <script type="module" src="main.js"></script>
+</body>

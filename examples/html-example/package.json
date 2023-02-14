@@ -1,0 +1,21 @@
+{
+  "name": "peanut-sdk-example",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^4.1.0"
+  },
+  "dependencies": {
+    "@squirrel-labs/peanut-sdk": "^1.0.4",
+    "@wagmi/core": "^0.9.5",
+    "@web3modal/ethereum": "^2.1.1",
+    "@web3modal/html": "^2.1.1",
+    "ethers": "^5.7.2"
+  }
+}
