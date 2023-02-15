@@ -7,11 +7,11 @@ import peanut from '@squirrel-labs/peanut-sdk';
 
 // create link
 const { link, txReceipt } = await peanut.createLink(
-  goerliWallet,                                             // Signer
-  5,                                                        // chainId
-  0.0001337,                                                // token amount to send
-  null,                                                     // token contract address (irrelevant for ether)
-  0,                                                        // tokenId (only used for NFT transfers)
+  goerliWallet, // Signer
+  5,            // chainId
+  0.0001337,    // token amount to send
+  null,         // token contract address (irrelevant for ether)
+  0,            // tokenId (only used for NFT transfers)
   'super secret password'
 );
 
