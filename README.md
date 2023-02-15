@@ -7,7 +7,7 @@ import peanut from '@squirrel-labs/peanut-sdk';
 
 // create link
 const { link, txReceipt } = await peanut.createLink(
-  goerliWallet, // Signer
+  signer,       // Signer
   5,            // chainId
   0.0001337,    // token amount to send
   null,         // token contract address (irrelevant for ether)
@@ -16,5 +16,5 @@ const { link, txReceipt } = await peanut.createLink(
 );
 
 // claim link
-const claimTx = await peanut.claimLink(goerliWallet, link);
+const claimTx = await peanut.claimLink(signer, link);
 ```
