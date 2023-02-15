@@ -8,6 +8,8 @@
 /////////////////////////////////////////////////////////
 
 import { ethers } from "ethers";
+import assert from "assert";
+
 
 // load data.js file from same directory (using import)
 import {
@@ -63,28 +65,23 @@ export function verifySignature(message, signature, address) {
 }
 
 export function solidityHashBytesEIP191(bytes) {
-  // assert input is Uint8Array
-  assert(bytes instanceof Uint8Array);
+  /* adds the EIP191 prefix to a message and hashes it same as solidity*/
+  // assert(bytes instanceof Uint8Array);
   return ethers.hashMessage(bytes);
 }
 
 export function solidityHashAddress(address) {
   /* hashes an address to a 32 byte hex string */
-  return ethers.solidityKeccak256(["address"], [address]);
+  // return ethers.solidityKeccak256(["address"], [address]); // no longer exists in ethers v6
+  return ethers.solidityPackedKeccak256(["address"], [address]);
 }
 
 export async function signAddress(string, privateKey) {
-  // assert string is an address (starts with 0x and is 42 chars long)
-  assert(
-    string.startsWith("0x") && string.length == 42,
-    "String is not an address"
-  );
+  // 1. hash plain address
+  const stringHash = ethers.solidityPackedKeccak256(["address"], [string]);
+  const stringHashbinary = ethers.getBytes(stringHash);
 
-  /// 1. hash plain address
-  const stringHash = ethers.solidityKeccak256(["address"], [string]);
-  const stringHashbinary = ethers.arrayify(stringHash);
-
-  /// 2. add eth msg prefix, then hash, then sign
+  // 2. add eth msg prefix, then hash, then sign
   var signer = new ethers.Wallet(privateKey);
   var signature = await signer.signMessage(stringHashbinary); // this calls ethers.hashMessage and prefixes the hash
   return signature;
@@ -102,6 +99,9 @@ function getRandomString(length) {
 
 export async function getContract(chainId, signer) {
   /* returns a contract object for the given chainId and signer */
+  if (typeof chainId == "string") { // if chainId is a string, convert to int
+    chainId = parseInt(chainId);
+  }
   const contractAddress =
     PEANUT_CONTRACTS_BY_CHAIN_IDS[chainId][CONTRACT_VERSION];
   const contract = new ethers.Contract(contractAddress, PEANUT_ABI_V3, signer);
@@ -109,23 +109,10 @@ export async function getContract(chainId, signer) {
   // TODO: return class
 }
 
-export function getDepositIdx(txReceipt) {
-  /* returns the deposit index from a tx receipt */
-  const events = txReceipt.events;
-  const chainId = txReceipt.chainId;
-  var depositIdx;
-  if (chainId = 137) {
-    depositIdx = events[events.length - 2].args[0]["_hex"];
-  } else {
-    depositIdx = events[events.length - 1].args[0]["_hex"];
-  }
-  depositIdx = parseInt(depositIdx, 16);
-  return depositIdx;
-}
-
 export function getParamsFromLink(link) {
   /* returns the parameters from a link */
-  const params = new URLSearchParams(link);
+  const url = new URL(link);
+  const params = new URLSearchParams(url.search);
   const chain = params.get("c"); // can be chain name or chain id
   const contractVersion = params.get("v");
   const depositIdx = params.get("i");
@@ -174,7 +161,7 @@ export async function approveSpendERC20(
   /*  Approves the contract to spend the specified amount of tokens   */
   const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, signer);
   if (amount == -1) { // if amount is -1, approve infinite amount
-    amount = ethers.constants.MaxUint256;
+    amount = ethers.MaxUint256;
   }
   const spender = PEANUT_CONTRACTS_BY_CHAIN_IDS[chainId][CONTRACT_VERSION];
   let allowance = await tokenContract.allowance(signer.address, spender);
@@ -188,10 +175,24 @@ export async function approveSpendERC20(
   return allowance;
 }
 
+export function getDepositIdx(txReceipt) {
+  /* returns the deposit index from a tx receipt */
+  const logs = txReceipt.logs;
+  const chainId = txReceipt.chainId;
+  var depositIdx;
+  if (chainId == 137) {
+    depositIdx = logs[logs.length - 2].args[0];
+  } else {
+    // get last log a
+    depositIdx = logs[logs.length - 1].args[0];
+  }
+  return depositIdx;
+}
+
 export async function createLink(
   signer, // ethers signer object
   chainId, // chain id of the network (only EVM for now)
-  amount, // amount of the token to send, in the smallest unit (e.g. 1 ETH = 1e18)
+  amount, // amount of the token to send
   tokenAddress = null,
   linkType = 0, // 0: ETH, 1: ERC20, 2: ERC721, 3: ERC1155
   tokenId = 0, // only used for ERC721 and ERC1155
@@ -204,11 +205,16 @@ export async function createLink(
         linkType: type of link (0: ETH, 1: ERC20, 2: ERC721, 3: ERC1155)
   */
 
+  let txOptions;
   if (linkType == 0) {
     tokenId = 0;
-    tokenAddress = ethers.constants.AddressZero;
+    tokenAddress = ethers.ZeroAddress;
+    // convert amount to string and parse it to ether
+    amount = ethers.parseUnits(amount.toString(), "ether");
+    txOptions = {value: amount};
   } else if (linkType == 1) {
     tokenId = 0;
+    txOptions = {value: ethers.parseEther("0")};
   }
 
   if (password == null) {
@@ -217,14 +223,13 @@ export async function createLink(
   const keys = generateKeysFromString(password); // deterministacally generate keys from password
   const contract = await getContract(chainId, signer);
 
-  // make the deposit!
   var tx = await contract.makeDeposit(
     tokenAddress,
-    contractType,
-    amount,
+    linkType,
+    BigInt(amount),
     tokenId,
     keys.address,
-    tx_options
+    txOptions
   );
 
   // now we need the deposit index from the tx receipt
@@ -238,22 +243,36 @@ export async function createLink(
     depositIdx,
     password
   );
-  return link;
+  // return the link and the tx receipt
+  return { link, txReceipt };
 }
 
-export async function claimLink(signer, link) {
+
+export async function claimLink(signer, link, recipient=null) {
   /* claims the contents of a link */
   const params = getParamsFromLink(link);
   const chainId = params.chain;
   const contractVersion = params.contractVersion;
   const depositIdx = params.depositIdx;
   const password = params.password;
-
-  const keys = generateKeysFromString(password); // deterministacally generate keys from password
+  if (recipient == null) {
+    recipient = signer.address;
+  }
+  const keys = generateKeysFromString(password); // deterministically generate keys from password
   const contract = await getContract(chainId, signer);
 
+  // cryptography
+  var addressHash = solidityHashAddress(recipient);
+  var addressHashBinary = ethers.getBytes(addressHash);
+  var addressHashEIP191 = solidityHashBytesEIP191(addressHashBinary);
+  var signature = await signAddress(recipient, keys.privateKey);  // sign with link keys
+  
   // withdraw the deposit
-  var tx = await contract.withdrawDeposit(depositIdx, keys.address, tx_options);
+  // address hash is hash(prefix + hash(address))
+  const tx = await contract.withdrawDeposit(depositIdx, recipient, addressHashEIP191, signature);
+  const txReceipt = await tx.wait();
+  
+  return txReceipt;  
 }
 
 
@@ -273,4 +292,5 @@ export default {
   getParamsFromPageURL,
   getLinkFromParams,
   createLink,
+  claimLink,
 };

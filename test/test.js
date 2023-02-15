@@ -24,7 +24,9 @@ peanut.greeting();
 // getParamsFromPageURL,
 // getLinkFromParams,
 // createLink,
+// claimLink,
 const TEST_WALLET_PRIVATE_KEY = process.env.TEST_WALLET_PRIVATE_KEY;
+const GOERLI_RPC_URL = process.env.POKT_GOERLI_RPC;
 const wallet = new ethers.Wallet(TEST_WALLET_PRIVATE_KEY);
 
 describe("Peanut SDK", function () {
@@ -108,6 +110,36 @@ describe("Peanut SDK", function () {
         TEST_WALLET_PRIVATE_KEY
       );
       assert.notEqual(signature1, signature2);
+    });
+  });
+
+  describe("Integration Test: create and claim BASE link on goerli", function () {
+    it("should create a link and claim it", async function () {
+      const goerliProvider = new ethers.JsonRpcProvider(GOERLI_RPC_URL);
+      const goerliWallet = new ethers.Wallet(
+        TEST_WALLET_PRIVATE_KEY,
+        goerliProvider
+      );
+
+      const linkValue = 0.001337 * 1e18;
+
+      // create link
+      const { link, txReceipt } = await peanut.createLink(
+        goerliWallet,
+        5,
+        linkValue,
+        null,
+        0,
+        0,
+        null
+      );
+
+        console.log("Created link: " + link + " with tx hash: " + txReceipt.hash);
+
+      const claimTx = await peanut.claimLink(goerliWallet, link);
+      console.log(claimTx);
+
+        console.log("Claimed link. Tx hash: ", claimTx.hash);      
     });
   });
 });
