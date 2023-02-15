@@ -1,19 +1,24 @@
 {
   "name": "@squirrel-labs/peanut-sdk",
-  "version": "1.0.5",
-  "description": "NPM package for the Peanut Protocol SDK",
+  "version": "1.0.10",
+  "description": "The Peanut Protocol SDK! See examples/ folder",
   "main": "index.js",
   "type": "module",
   "scripts": {
     "test": "mocha --timeout 100000 --exit",
-    "dry-run": "npm pack --dry-run",
-    "publish": "npm publish --access public"
+    "dry-run": "npm pack --dry-run"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ProphetFund/peanut-sdk.git"
   },
-  "keywords": [],
+  "keywords": [
+    "crypto",
+    "evm",
+    "cryptography",
+    "links",
+    "ethers"
+  ],
   "author": "Hugo Montenegro, Konrad Urban",
   "license": "MIT",
   "bugs": {
@@ -21,7 +26,6 @@
   },
   "homepage": "https://github.com/ProphetFund/peanut-sdk#readme",
   "dependencies": {
-    "@squirrel-labs/peanut-sdk": "^1.0.5",
     "dotenv": "^16.0.3",
     "ethers": "^6.0.3"
   },
