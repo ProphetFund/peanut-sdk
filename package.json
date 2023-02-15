@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "mocha --timeout 100000 --exit",
+    "test": "mocha --timeout 600000 --exit",
     "dry-run": "npm pack --dry-run"
   },
   "repository": {

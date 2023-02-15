@@ -10,7 +10,6 @@
 import { ethers } from "ethers";
 import assert from "assert";
 
-
 // load data.js file from same directory (using import)
 import {
   PEANUT_ABI_V3,
@@ -99,7 +98,8 @@ function getRandomString(length) {
 
 export async function getContract(chainId, signer) {
   /* returns a contract object for the given chainId and signer */
-  if (typeof chainId == "string") { // if chainId is a string, convert to int
+  if (typeof chainId == "string") {
+    // if chainId is a string, convert to int
     chainId = parseInt(chainId);
   }
   const contractAddress =
@@ -113,41 +113,51 @@ export function getParamsFromLink(link) {
   /* returns the parameters from a link */
   const url = new URL(link);
   const params = new URLSearchParams(url.search);
-  const chain = params.get("c"); // can be chain name or chain id
+  const chainId = params.get("c"); // can be chain name or chain id
   const contractVersion = params.get("v");
   const depositIdx = params.get("i");
   const password = params.get("p");
-  return { chain, contractVersion, depositIdx, password };
+  let trackId = "" // optional
+  if (params.get("t")) {
+    trackId = params.get("t");
+  }
+  return { chainId, contractVersion, depositIdx, password, trackId };
 }
 
 export function getParamsFromPageURL() {
   /* returns the parameters from the current page url */
   const params = new URLSearchParams(window.location.search);
-  const chain = params.get("c"); // can be chain name or chain id
+  const chainId = params.get("c"); // can be chain name or chain id
   const contractVersion = params.get("v");
   const depositIdx = params.get("i");
   const password = params.get("p");
-  return { chain, contractVersion, depositIdx, password };
+
+  return { chainId, contractVersion, depositIdx, password };
 }
 
 export function getLinkFromParams(
-  chain,
+  chainId,
   contractVersion,
   depositIdx,
   password,
-  baseUrl = "https://peanut.to/claim"
+  baseUrl = "https://peanut.to/claim",
+  trackId = ""
 ) {
   /* returns a link from the given parameters */
   const link =
     baseUrl +
     "?c=" +
-    chain +
+    chainId +
     "&v=" +
     contractVersion +
     "&i=" +
     depositIdx +
     "&p=" +
     password;
+
+  if (trackId != "") {
+    return link + "&t=" + trackId;
+  }
   return link;
 }
 
@@ -160,20 +170,25 @@ export async function approveSpendERC20(
 ) {
   /*  Approves the contract to spend the specified amount of tokens   */
   const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, signer);
-  if (amount == -1) { // if amount is -1, approve infinite amount
+  if (amount == -1) {
+    // if amount is -1, approve infinite amount
     amount = ethers.MaxUint256;
   }
   const spender = PEANUT_CONTRACTS_BY_CHAIN_IDS[chainId][CONTRACT_VERSION];
   let allowance = await tokenContract.allowance(signer.address, spender);
-  allowance = allowance / Math.pow(10, tokenDecimals);
+  // convert amount to BigInt and compare to allowance
+  amount = ethers.parseUnits(amount.toString(), tokenDecimals);
   if (allowance >= amount) {
     console.log("Allowance already enough, no need to approve more");
+    return { allowance, txReceipt: null };
   } else {
     const tx = await tokenContract.approve(spender, amount);
-    await tx.wait();
+    const txReceipt = await tx.wait();
+    let allowance = await tokenContract.allowance(signer.address, spender);
+    return { allowance, txReceipt };
   }
-  return allowance;
 }
+
 
 export function getDepositIdx(txReceipt) {
   /* returns the deposit index from a tx receipt */
@@ -189,44 +204,47 @@ export function getDepositIdx(txReceipt) {
   return depositIdx;
 }
 
-export async function createLink(
+export async function createLink({
   signer, // ethers signer object
   chainId, // chain id of the network (only EVM for now)
-  amount, // amount of the token to send
-  tokenAddress = null,
-  linkType = 0, // 0: ETH, 1: ERC20, 2: ERC721, 3: ERC1155
+  tokenAmount, // amount of the token to send
+  tokenAddress = "0x0000000000000000000000000000000000000000",
+  tokenType = 0, // 0: ETH, 1: ERC20, 2: ERC721, 3: ERC1155
   tokenId = 0, // only used for ERC721 and ERC1155
-  password = null
-) {
-  /* creates a link with some deposited assets
-        chainId: chain id of the network (only EVM for now) // soon AlephZero + more
-        amount: amount of peanuts to claim
-        tokenAddress: address of the token to claim
-        linkType: type of link (0: ETH, 1: ERC20, 2: ERC721, 3: ERC1155)
-  */
+  tokenDecimals = 18, // only used for ERC20 and ERC1155
+  password = "", // password to claim the link
+  baseUrl = "https://peanut.to/claim",
+  trackId = "sdk", // optional tracker id to track the link source
+}) {
+  /* creates a link with redeemable tokens */
 
-  let txOptions;
-  if (linkType == 0) {
-    tokenId = 0;
-    tokenAddress = ethers.ZeroAddress;
-    // convert amount to string and parse it to ether
-    amount = ethers.parseUnits(amount.toString(), "ether");
-    txOptions = {value: amount};
-  } else if (linkType == 1) {
-    tokenId = 0;
-    txOptions = {value: ethers.parseEther("0")};
+  assert(signer, "signer arg is required");
+  assert(chainId, "chainId arg is required");
+  assert(tokenAmount, "amount arg is required");
+
+  let txOptions = {};
+  // For base tokens, we need to send the amount as value
+  if (tokenType == 0) {
+    // convert tokenAmount to string and parse it to ether
+    tokenAmount = ethers.parseUnits(tokenAmount.toString(), "ether");
+    txOptions = { value: tokenAmount };
+  }
+  // for erc20 and erc1155, we need to convert tokenAmount to appropriate decimals
+  else if (tokenType == 1 || tokenType == 3) {
+    tokenAmount = ethers.parseUnits(tokenAmount.toString(), tokenDecimals);
   }
 
-  if (password == null) {
+  if (password == null || password == "") {
+    // if no password is provided, generate a random one
     password = getRandomString(16);
   }
-  const keys = generateKeysFromString(password); // deterministacally generate keys from password
+  const keys = generateKeysFromString(password); // deterministically generate keys from password
   const contract = await getContract(chainId, signer);
 
   var tx = await contract.makeDeposit(
     tokenAddress,
-    linkType,
-    BigInt(amount),
+    tokenType,
+    BigInt(tokenAmount),
     tokenId,
     keys.address,
     txOptions
@@ -241,17 +259,21 @@ export async function createLink(
     chainId,
     CONTRACT_VERSION,
     depositIdx,
-    password
+    password,
+    baseUrl,
+    trackId
   );
   // return the link and the tx receipt
   return { link, txReceipt };
 }
 
-
-export async function claimLink(signer, link, recipient=null) {
+export async function claimLink({ signer, link, recipient = null }) {
   /* claims the contents of a link */
+  assert(signer, "signer arg is required");
+  assert(link, "link arg is required");
+
   const params = getParamsFromLink(link);
-  const chainId = params.chain;
+  const chainId = params.chainId;
   const contractVersion = params.contractVersion;
   const depositIdx = params.depositIdx;
   const password = params.password;
@@ -265,16 +287,20 @@ export async function claimLink(signer, link, recipient=null) {
   var addressHash = solidityHashAddress(recipient);
   var addressHashBinary = ethers.getBytes(addressHash);
   var addressHashEIP191 = solidityHashBytesEIP191(addressHashBinary);
-  var signature = await signAddress(recipient, keys.privateKey);  // sign with link keys
-  
+  var signature = await signAddress(recipient, keys.privateKey); // sign with link keys
+
   // withdraw the deposit
   // address hash is hash(prefix + hash(address))
-  const tx = await contract.withdrawDeposit(depositIdx, recipient, addressHashEIP191, signature);
+  const tx = await contract.withdrawDeposit(
+    depositIdx,
+    recipient,
+    addressHashEIP191,
+    signature
+  );
   const txReceipt = await tx.wait();
-  
-  return txReceipt;  
-}
 
+  return txReceipt;
+}
 
 // export object with all functions
 export default {
@@ -293,4 +319,7 @@ export default {
   getLinkFromParams,
   createLink,
   claimLink,
+  approveSpendERC20,
+  // approveSpendERC721,
+  // approveSpendERC1155,
 };

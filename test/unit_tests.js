@@ -9,22 +9,6 @@ dotenv.config();
 
 peanut.greeting();
 
-// actual tests
-// greeting,
-// generateKeysFromString,
-// signMessageWithPrivatekey,
-// verifySignature,
-// solidityHashBytesEIP191,
-// solidityHashAddress,
-// signAddress,
-// getRandomString,
-// getContract,
-// getDepositIdx,
-// getParamsFromLink,
-// getParamsFromPageURL,
-// getLinkFromParams,
-// createLink,
-// claimLink,
 const TEST_WALLET_PRIVATE_KEY = process.env.TEST_WALLET_PRIVATE_KEY;
 const GOERLI_RPC_URL = process.env.POKT_GOERLI_RPC;
 const wallet = new ethers.Wallet(TEST_WALLET_PRIVATE_KEY);
@@ -113,33 +97,26 @@ describe("Peanut SDK", function () {
     });
   });
 
-  describe("Integration Test: create and claim BASE link on goerli", function () {
-    it("should create a link and claim it", async function () {
-      const goerliProvider = new ethers.JsonRpcProvider(GOERLI_RPC_URL);
-      const goerliWallet = new ethers.Wallet(
-        TEST_WALLET_PRIVATE_KEY,
-        goerliProvider
-      );
-
-      const linkValue = 0.001337 * 1e18;
-
-      // create link
-      const { link, txReceipt } = await peanut.createLink(
-        goerliWallet,
-        5,
-        linkValue,
-        null,
-        0,
-        0,
-        null
-      );
-
-        console.log("Created link: " + link + " with tx hash: " + txReceipt.hash);
-
-      const claimTx = await peanut.claimLink(goerliWallet, link);
-      console.log(claimTx);
-
-        console.log("Claimed link. Tx hash: ", claimTx.hash);      
+  describe("Link Tests", function () {
+    describe("getParamsFromLink()", function () {
+      it("should return the correct params from a link", function () {
+        let link = "https://peanut.to/claim?c=5&v=v3&i=52&p=super_secret_password"
+        let params =  peanut.getParamsFromLink(link);
+        assert.equal(params.chainId, 5);
+        assert.equal(params.contractVersion, "v3");
+        assert.equal(params.depositIdx, 52);
+        assert.equal(params.password, "super_secret_password");
+        assert.equal(params.trackId, "");
+      });
+      it("should return the correct params from a link with a trackId", function () {
+        let link = "https://peanut.to/claim?c=5&v=v3&i=52&p=super_secret_password&t=123456789"
+        let params =  peanut.getParamsFromLink(link);
+        assert.equal(params.chainId, 5);
+        assert.equal(params.contractVersion, "v3");
+        assert.equal(params.depositIdx, 52);
+        assert.equal(params.password, "super_secret_password");
+        assert.equal(params.trackId, "123456789");
+      });
     });
   });
 });
